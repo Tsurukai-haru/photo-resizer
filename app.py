@@ -72,7 +72,7 @@ st.markdown(custom_css, unsafe_allow_html=True)
 
 
 # --- UIヘッダー ---
-st.title("✨ Yuru Compressor")
+st.title("✨ Photo Compression Tool")
 st.markdown("スマホの高画質な写真を、**画質と縦横比を保ちながら**サクッと指定サイズに圧縮します。")
 
 st.divider()
