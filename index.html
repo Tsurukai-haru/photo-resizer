@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photo Compression Tool</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
     <style>
-        /* 1. 画面全体の背景設定（パステルグラデーション） */
+        /* 全体の背景設定 */
         body {
             margin: 0;
-            padding: 0;
+            padding: 20px;
             font-family: 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #fce4ec 0%, #e8eaf6 50%, #e3f2fd 100%);
             min-height: 100vh;
@@ -18,37 +20,93 @@
             justify-content: center;
             align-items: center;
             color: #333344;
+            box-sizing: border-box;
         }
 
-        /* 2. お友達のアプリ風！ガラスのカード（Glassmorphism） */
+        /* ガラスのカード */
         .glass-card {
             background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(12px); /* すりガラス効果 */
-            -webkit-backdrop-filter: blur(12px); /* Safari用 */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.5);
             border-radius: 20px;
-            padding: 40px;
+            padding: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            width: 90%;
+            width: 100%;
             max-width: 450px;
             text-align: center;
         }
 
         h1 { margin-top: 0; font-size: 24px; }
 
-        /* 3. アップロード枠のデザイン */
+        /* アップロード枠（この中でサムネイルも包み込むように変更） */
         .upload-area {
             border: 2px dashed #b2ccff;
             border-radius: 15px;
-            padding: 30px;
+            padding: 20px;
             background: rgba(255, 255, 255, 0.4);
             cursor: pointer;
             transition: all 0.3s ease;
             margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .upload-area:hover { background: rgba(255, 255, 255, 0.8); }
 
-        /* 4. 押したくなるボタンのデザイン */
+        /* 📸 画像プレビューエリア（枠内に収まるように調整） */
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px; /* 文字との間に余白を作る */
+            max-height: 200px;
+            overflow-y: auto;
+            width: 100%;
+        }
+        
+        .preview-item {
+            position: relative;
+            width: 70px;
+            height: 70px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border: 2px solid white;
+            cursor: default; /* サムネイル上はカーソルを矢印に戻す */
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* ❌ 削除ボタンのデザイン */
+        .delete-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(255, 60, 60, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .delete-btn:hover { transform: scale(1.1); }
+
+        /* ボタン */
         .btn {
             background: linear-gradient(90deg, #8ec5fc 0%, #e0c3fc 100%);
             color: white;
@@ -60,11 +118,17 @@
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
-            margin-top: 10px;
+            width: 100%;
         }
         .btn:hover {
-            transform: translateY(-3px); /* カーソルを乗せると少し浮く */
+            transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(142, 197, 252, 0.4);
+        }
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
     </style>
 </head>
@@ -72,133 +136,146 @@
 
     <div class="glass-card">
         <h1>✨ Photo Compression Tool</h1>
-        <p>スマホの写真をサクッと圧縮</p>
+        <p style="margin-bottom: 25px;">スマホの写真をサクッと圧縮</p>
 
         <div class="upload-area" id="uploadArea">
-            <p>📂 ここをクリックして画像を選択</p>
-            <input type="file" id="fileInput" multiple accept="image/*, .heic" style="display: none;">
-
-            <input type="file" id="fileInput" multiple accept="image/jpeg, image/png, image/webp" style="display: none;">        </div>
+            <div id="uploadMessage">
+                <p style="margin: 0;">📂 ここをクリックして画像を追加</p>
+            </div>
+            
+            <input type="file" id="fileInput" multiple accept="image/jpeg, image/png, image/webp" style="display: none;">
+            
+            <div class="preview-container" id="previewArea"></div>
+        </div>
 
         <div style="text-align: left; margin-bottom: 20px;">
             <label for="sizeSlider">目標サイズ: <strong id="sizeValue" style="font-size: 20px;">500</strong> kB</label><br>
             <input type="range" id="sizeSlider" min="100" max="3000" value="500" step="100" style="width: 100%; margin-top: 10px;">
         </div>
 
-        <button class="btn" id="compressBtn">圧縮をスタート</button>
+        <button class="btn" id="compressBtn">圧縮してZIPで保存</button>
     </div>
 
     <script>
-        // HTMLの部品を取得
         const uploadArea = document.getElementById('uploadArea');
+        const uploadMessage = document.getElementById('uploadMessage'); // 文字部分
         const fileInput = document.getElementById('fileInput');
+        const previewArea = document.getElementById('previewArea');
         const sizeSlider = document.getElementById('sizeSlider');
         const sizeValue = document.getElementById('sizeValue');
         const compressBtn = document.getElementById('compressBtn');
 
-        // 選択された画像データを一時的に保存する箱
-        let selectedFiles = [];
+        let selectedFilesArray = [];
 
-        // ① 枠をクリックでファイル選択画面を開く
+        // ① 枠をクリックでファイル選択（画像部分をクリックした時は反応させない工夫は後述）
         uploadArea.addEventListener('click', () => fileInput.click());
 
-        // ② スライダーと数字を連動させる
+        // ② スライダー連動
         sizeSlider.addEventListener('input', (e) => sizeValue.textContent = e.target.value);
 
-        // ③ ファイルが選ばれた時の処理
+        // ③ ファイルが追加された時
         fileInput.addEventListener('change', (e) => {
-            selectedFiles = Array.from(e.target.files);
-            
-            if (selectedFiles.length > 0) {
-                // 選ばれた枚数を枠の中に表示してあげる
-                uploadArea.innerHTML = `<p style="color: #4CAF50; font-weight: bold;">✅ ${selectedFiles.length} 枚の画像が選択されました</p>`;
-            } else {
-                uploadArea.innerHTML = `<p>📂 ここをクリックして画像を選択</p>`;
-            }
+            const newFiles = Array.from(e.target.files);
+            selectedFilesArray = selectedFilesArray.concat(newFiles);
+            e.target.value = '';
+            updatePreviewUI();
         });
 
-        // ④ 「圧縮をスタート」ボタンが押された時のメイン処理
-        compressBtn.addEventListener('click', async () => {
-            if (selectedFiles.length === 0) {
-                alert("まずは画像を選択してください！");
+        // ★ UI更新関数
+        function updatePreviewUI() {
+            previewArea.innerHTML = ''; 
+
+            if (selectedFilesArray.length === 0) {
+                // 画像ゼロの時の文字
+                uploadMessage.innerHTML = `<p style="margin: 0;">📂 ここをクリックして画像を追加</p>`;
+                previewArea.style.marginTop = "0"; // 余白を消す
+                compressBtn.disabled = true; 
                 return;
             }
+            
+            // 画像がある時の文字
+            uploadMessage.innerHTML = `<p style="color: #4CAF50; font-weight: bold; margin: 0 0 5px 0;">✅ ${selectedFilesArray.length} 枚の画像を選択中</p><span style="font-size:12px; color:#666;">(さらに追加するにはここをクリック)</span>`;
+            previewArea.style.marginTop = "15px"; // サムネイルとの間に余白を作る
+            compressBtn.disabled = false; 
+
+            selectedFilesArray.forEach((file, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'preview-item';
+                
+                // ★超重要：サムネイル画像自体をクリックした時は、ファイル追加画面を開かないようにする
+                itemDiv.onclick = (e) => e.stopPropagation();
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.title = file.name;
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.innerHTML = '×';
+                
+                // ★超重要：×ボタンを押した時も、ファイル追加画面が開くのをブロックする
+                delBtn.onclick = (e) => {
+                    e.stopPropagation(); 
+                    selectedFilesArray.splice(index, 1); 
+                    updatePreviewUI(); 
+                };
+
+                itemDiv.appendChild(img);
+                itemDiv.appendChild(delBtn);
+                previewArea.appendChild(itemDiv);
+            });
+        }
+
+        updatePreviewUI();
+
+        // ④ 圧縮処理（変更なし）
+        compressBtn.addEventListener('click', async () => {
+            if (selectedFilesArray.length === 0) return;
 
             const targetKB = parseInt(sizeSlider.value); 
-            compressBtn.textContent = "⏳ 圧縮中...";
-            compressBtn.style.pointerEvents = "none"; 
+            compressBtn.textContent = "⏳ 処理中...";
+            compressBtn.disabled = true; 
 
-            for (let i = 0; i < selectedFiles.length; i++) {
-                let file = selectedFiles[i];
-                
+            const zip = new JSZip();
+
+            for (let i = 0; i < selectedFilesArray.length; i++) {
+                let file = selectedFilesArray[i];
                 try {
-                    // HEIC画像だった場合の変換処理
-                    if (file.name.toLowerCase().endsWith('.heic')) {
-                        compressBtn.textContent = "⏳ HEICを変換中... (数秒かかります)";
-                        
-                        let jpegBlob = await heic2any({
-                            blob: file,
-                            toType: "image/jpeg",
-                            quality: 0.8 // メモリ不足を防ぐために少し軽くして変換
-                        });
-                        
-                        // ★追加：もしLive Photosなどで複数枚重なっていたら、最初の1枚だけを取り出す
-                        if (Array.isArray(jpegBlob)) {
-                            jpegBlob = jpegBlob[0];
-                        }
-                        
-                        // 変換したデータで上書きし、ファイル名も .jpg に変更する
-                        file = new File([jpegBlob], file.name.replace(/\.heic$/i, '.jpg'), { type: "image/jpeg" });
-                        compressBtn.textContent = "⏳ 圧縮中...";
-                    }
-
-                    // 画像を圧縮する魔法の関数を呼び出す
+                    compressBtn.textContent = `⏳ 圧縮中... (${i + 1}/${selectedFilesArray.length}枚)`;
                     let compressedBlob = await compressImage(file, targetKB);
-                    
-                    // 圧縮に成功したらダウンロード
-                    downloadBlob(compressedBlob, `compressed_${file.name}`);
-                    
+                    let newFileName = file.name.replace(/\.[^/.]+$/, "") + `_compressed_${i}.jpg`;
+                    zip.file(newFileName, compressedBlob);
                 } catch (error) {
                     console.error(error);
-                    
-                    // ★追加：特定のエラー（ERR_LIBHEIF）だった場合の専用メッセージ
-                    let errorMsg = error.message || String(error);
-                    if (errorMsg.includes("ERR_LIBHEIF")) {
-                        alert(`申し訳ありません。\n「${file.name}」は最新の特殊なHEIC形式（HDRなど）のため、ブラウザでの直接圧縮に対応していません。別の形式の画像をお試しください。`);
-                    } else {
-                        alert(`${file.name} の処理中にエラーが起きました。\n【詳細】: ${errorMsg}`);
-                    }
-                    
-                    // エラーが起きてもボタンを元に戻す
-                    compressBtn.textContent = "圧縮をスタート";
-                    compressBtn.style.pointerEvents = "auto";
+                    alert(`${file.name} の処理中にエラーが起きました。\n【詳細】: ${error.message || error}`);
                 }
             }
 
-            compressBtn.textContent = "✨ 圧縮完了！";
+            compressBtn.textContent = "📦 ZIPファイルを作成中...";
+            try {
+                const zipContent = await zip.generateAsync({ type: "blob" });
+                downloadBlob(zipContent, "compressed_images.zip");
+                compressBtn.textContent = "✨ 圧縮完了！";
+            } catch (error) {
+                alert("ZIPファイルの作成に失敗しました。");
+            }
+
             setTimeout(() => {
-                compressBtn.textContent = "圧縮をスタート";
-                compressBtn.style.pointerEvents = "auto";
+                compressBtn.textContent = "圧縮してZIPで保存";
+                compressBtn.disabled = false;
             }, 3000);
         });
 
-        // ----------------------------------------------------
-        // ✨ ここから下が「画像を圧縮する魔法の関数」です ✨
-        // ----------------------------------------------------
-
+        // 圧縮関数
         async function compressImage(file, targetKB) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
                 const reader = new FileReader();
 
-                // 1. ファイルを読み込んで画像(img)として表示できる状態にする
                 reader.onload = (e) => {
                     img.onload = () => {
-                        // 2. 絵を描くための見えないキャンバス（画用紙）を用意する
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-
-                        // スマホの写真はデカすぎるので、最大幅を2000pxに制限する
                         const MAX_WIDTH = 2000;
                         let width = img.width;
                         let height = img.height;
@@ -208,44 +285,32 @@
                             width = MAX_WIDTH;
                         }
 
-                        // キャンバスのサイズを決定し、画像をそこに描画する
                         canvas.width = width;
                         canvas.height = height;
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        // 3. 画質（Quality）を調整して目標サイズを目指すループ
-                        let quality = 0.9; // 初期画質90%
-                        let resultBlob = null;
-
-                        // 圧縮を試す関数
+                        let quality = 0.9; 
                         const attemptCompression = () => {
                             canvas.toBlob((blob) => {
                                 const currentKB = blob.size / 1024;
-                                
                                 if (currentKB <= targetKB || quality <= 0.2) {
-                                    // 目標クリア！またはこれ以上下げられない場合は終了
                                     resolve(blob);
                                 } else {
-                                    // まだ大きければ、画質を少し下げてもう一度試す
                                     quality -= 0.1;
                                     attemptCompression();
                                 }
-                            }, 'image/jpeg', quality); // JPEG形式で圧縮
+                            }, 'image/jpeg', quality); 
                         };
-
-                        // 初回の圧縮テストを開始
                         attemptCompression();
                     };
                     img.src = e.target.result;
                 };
                 reader.onerror = (e) => reject(e);
-                reader.readAsDataURL(file); // 読み込みスタート
+                reader.readAsDataURL(file);
             });
         }
 
-        // ----------------------------------------------------
-        // 📥 出来上がったデータをダウンロードさせる関数
-        // ----------------------------------------------------
+        // ダウンロード関数
         function downloadBlob(blob, filename) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
