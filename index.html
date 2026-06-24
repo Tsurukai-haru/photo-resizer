@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photo Compression Tool</title>
-    
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
+
     <style>
-        /* =========================================
-           共通のデザイン（背景や全体レイアウト）
-        ========================================= */
         body {
             margin: 0;
             padding: 20px;
@@ -38,7 +36,15 @@
             text-align: center;
         }
 
-        h1 { margin-top: 0; font-size: 24px; }
+        h1 {
+            margin-top: 0;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        h1 i { color: #7aabda; font-size: 22px; }
 
         .upload-area {
             border: 2px dashed #b2ccff;
@@ -54,7 +60,13 @@
         }
         .upload-area:hover { background: rgba(255, 255, 255, 0.8); }
 
-        /* スクロール領域の共通設定 */
+        #uploadMessage i {
+            font-size: 28px;
+            color: #7aabda;
+            display: block;
+            margin-bottom: 8px;
+        }
+
         .preview-container {
             margin-top: 15px;
             max-height: 220px;
@@ -65,7 +77,6 @@
             display: flex;
         }
 
-        /* 共通の「削除ボタン」ベースデザイン */
         .delete-btn {
             background: rgba(255, 60, 60, 0.9);
             color: white;
@@ -81,9 +92,7 @@
         }
         .delete-btn:hover { transform: scale(1.1); }
 
-        /* =========================================
-           💻 PC・iPad向けのデザイン（横幅600px以上）
-        ========================================= */
+        /* Desktop / tablet layout (600px+) */
         @media (min-width: 600px) {
             .preview-container {
                 flex-direction: row;
@@ -107,23 +116,19 @@
                 object-fit: cover;
                 display: block;
             }
-            .file-name {
-                display: none; /* PCでは文字は隠す */
-            }
+            .file-name { display: none; }
             .delete-btn {
                 position: absolute;
                 top: 4px;
                 right: 4px;
                 width: 22px;
                 height: 22px;
-                font-size: 12px;
+                font-size: 10px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             }
         }
 
-        /* =========================================
-           📱 スマホ向けのデザイン（横幅599px以下）
-        ========================================= */
+        /* Mobile layout (599px and below) */
         @media (max-width: 599px) {
             .preview-container {
                 flex-direction: column;
@@ -142,11 +147,11 @@
                 width: 100%;
                 box-sizing: border-box;
             }
-            .thumb-img {
-                display: none; /* スマホでは画像を隠す */
-            }
+            .thumb-img { display: none; }
             .file-name {
-                display: block;
+                display: flex;
+                align-items: center;
+                gap: 8px;
                 font-size: 13px;
                 color: #555;
                 white-space: nowrap;
@@ -156,11 +161,12 @@
                 flex-grow: 1;
                 margin-right: 15px;
             }
+            .file-name i { color: #7aabda; flex-shrink: 0; }
             .delete-btn {
                 position: static;
                 width: 26px;
                 height: 26px;
-                font-size: 14px;
+                font-size: 11px;
                 background: rgba(255, 60, 60, 0.1);
                 color: #ff4d4d;
                 flex-shrink: 0;
@@ -168,9 +174,15 @@
             .delete-btn:hover { background: rgba(255, 60, 60, 0.2); }
         }
 
-        /* =========================================
-           その他のUI部品（スライダー・ボタン）
-        ========================================= */
+        .slider-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .slider-label i { color: #7aabda; }
+
         .btn {
             background: linear-gradient(90deg, #8ec5fc 0%, #e0c3fc 100%);
             color: white;
@@ -183,6 +195,10 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
             width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         .btn:hover {
             transform: translateY(-3px);
@@ -199,24 +215,29 @@
 <body>
 
     <div class="glass-card">
-        <h1>✨ Photo Compression Tool</h1>
-        <p style="margin-bottom: 25px;">スマホやiPadの写真をサクッと圧縮</p>
+        <h1><i class="fa-solid fa-camera"></i> Photo Compression Tool</h1>
+        <p style="margin-bottom: 25px;">スマホやiPadの写真をかんたんに圧縮</p>
 
         <div class="upload-area" id="uploadArea">
             <div id="uploadMessage">
-                <p style="margin: 0;">📂 ここをクリックして画像を追加</p>
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <p style="margin: 0;">クリックして画像を追加</p>
             </div>
             <input type="file" id="fileInput" multiple accept="image/jpeg, image/png, image/webp" style="display: none;">
-            
+
             <div class="preview-container" id="previewArea"></div>
         </div>
 
-        <div style="text-align: left; margin-bottom: 20px;">
-            <label for="sizeSlider">目標サイズ: <strong id="sizeValue" style="font-size: 20px;">500</strong> kB</label><br>
-            <input type="range" id="sizeSlider" min="100" max="3000" value="500" step="100" style="width: 100%; margin-top: 10px;">
+        <div class="slider-label">
+            <i class="fa-solid fa-sliders"></i>
+            <label for="sizeSlider">目標サイズ: <strong id="sizeValue" style="font-size: 20px;">500</strong> kB</label>
         </div>
+        <input type="range" id="sizeSlider" min="100" max="3000" value="500" step="100" style="width: 100%; margin-bottom: 20px;">
 
-        <button class="btn" id="compressBtn">圧縮してZIPで保存</button>
+        <button class="btn" id="compressBtn">
+            <i class="fa-solid fa-file-zipper"></i>
+            <span id="btnText">圧縮してZIPで保存</span>
+        </button>
     </div>
 
     <script>
@@ -227,6 +248,7 @@
         const sizeSlider = document.getElementById('sizeSlider');
         const sizeValue = document.getElementById('sizeValue');
         const compressBtn = document.getElementById('compressBtn');
+        const btnText = document.getElementById('btnText');
 
         let selectedFilesArray = [];
 
@@ -240,48 +262,51 @@
             updatePreviewUI();
         });
 
-        // ★ UI更新関数（画像と文字、両方を作っておいてCSSで表示を切り替える）
         function updatePreviewUI() {
-            previewArea.innerHTML = ''; 
+            previewArea.innerHTML = '';
 
             if (selectedFilesArray.length === 0) {
-                uploadMessage.innerHTML = `<p style="margin: 0;">📂 ここをクリックして画像を追加</p>`;
-                previewArea.style.marginTop = "0"; 
-                compressBtn.disabled = true; 
+                uploadMessage.innerHTML = `
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:28px; color:#7aabda; display:block; margin-bottom:8px;"></i>
+                    <p style="margin: 0;">クリックして画像を追加</p>
+                `;
+                previewArea.style.marginTop = '0';
+                compressBtn.disabled = true;
                 return;
             }
-            
-            uploadMessage.innerHTML = `<p style="color: #4CAF50; font-weight: bold; margin: 0 0 5px 0;">✅ ${selectedFilesArray.length} 枚の画像を選択中</p><span style="font-size:12px; color:#666;">(さらに追加するにはここをクリック)</span>`;
-            previewArea.style.marginTop = "15px"; 
-            compressBtn.disabled = false; 
+
+            uploadMessage.innerHTML = `
+                <p style="color: #4CAF50; font-weight: bold; margin: 0 0 5px 0;">
+                    <i class="fa-solid fa-circle-check" style="margin-right:4px;"></i>${selectedFilesArray.length} 枚の画像を選択中
+                </p>
+                <span style="font-size:12px; color:#666;">さらに追加するにはここをクリック</span>
+            `;
+            previewArea.style.marginTop = '15px';
+            compressBtn.disabled = false;
 
             selectedFilesArray.forEach((file, index) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'preview-item';
                 itemDiv.onclick = (e) => e.stopPropagation();
 
-                // ① 画像（PC・iPad用）
                 const img = document.createElement('img');
                 img.className = 'thumb-img';
                 img.src = URL.createObjectURL(file);
                 img.title = file.name;
 
-                // ② 文字リスト（スマホ用）
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'file-name';
-                nameSpan.textContent = `🖼️ ${file.name}`;
+                nameSpan.innerHTML = `<i class="fa-regular fa-image"></i><span style="overflow:hidden; text-overflow:ellipsis;">${file.name}</span>`;
 
-                // ③ 削除ボタン
                 const delBtn = document.createElement('button');
                 delBtn.className = 'delete-btn';
-                delBtn.innerHTML = '×';
+                delBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
                 delBtn.onclick = (e) => {
-                    e.stopPropagation(); 
-                    selectedFilesArray.splice(index, 1); 
-                    updatePreviewUI(); 
+                    e.stopPropagation();
+                    selectedFilesArray.splice(index, 1);
+                    updatePreviewUI();
                 };
 
-                // 全部まとめてdivに入れる（どれを表示するかはCSSが自動で決める）
                 itemDiv.appendChild(img);
                 itemDiv.appendChild(nameSpan);
                 itemDiv.appendChild(delBtn);
@@ -291,20 +316,20 @@
 
         updatePreviewUI();
 
-        // 圧縮とZIP化の処理
         compressBtn.addEventListener('click', async () => {
             if (selectedFilesArray.length === 0) return;
-            const targetKB = parseInt(sizeSlider.value); 
-            compressBtn.textContent = "⏳ 処理中...";
-            compressBtn.disabled = true; 
+            const targetKB = parseInt(sizeSlider.value);
+            btnText.textContent = '処理中...';
+            compressBtn.querySelector('i').className = 'fa-solid fa-spinner fa-spin';
+            compressBtn.disabled = true;
             const zip = new JSZip();
 
             for (let i = 0; i < selectedFilesArray.length; i++) {
                 let file = selectedFilesArray[i];
                 try {
-                    compressBtn.textContent = `⏳ 圧縮中... (${i + 1}/${selectedFilesArray.length}枚)`;
+                    btnText.textContent = `圧縮中... (${i + 1}/${selectedFilesArray.length}枚)`;
                     let compressedBlob = await compressImage(file, targetKB);
-                    let newFileName = file.name.replace(/\.[^/.]+$/, "") + `_compressed_${i}.jpg`;
+                    let newFileName = file.name.replace(/\.[^/.]+$/, '') + `_compressed_${i}.jpg`;
                     zip.file(newFileName, compressedBlob);
                 } catch (error) {
                     console.error(error);
@@ -312,22 +337,23 @@
                 }
             }
 
-            compressBtn.textContent = "📦 ZIPファイルを作成中...";
+            btnText.textContent = 'ZIPファイルを作成中...';
             try {
-                const zipContent = await zip.generateAsync({ type: "blob" });
-                downloadBlob(zipContent, "compressed_images.zip");
-                compressBtn.textContent = "✨ 圧縮完了！";
+                const zipContent = await zip.generateAsync({ type: 'blob' });
+                downloadBlob(zipContent, 'compressed_images.zip');
+                compressBtn.querySelector('i').className = 'fa-solid fa-circle-check';
+                btnText.textContent = '圧縮完了';
             } catch (error) {
-                alert("ZIPファイルの作成に失敗しました。");
+                alert('ZIPファイルの作成に失敗しました。');
             }
 
             setTimeout(() => {
-                compressBtn.textContent = "圧縮してZIPで保存";
+                compressBtn.querySelector('i').className = 'fa-solid fa-file-zipper';
+                btnText.textContent = '圧縮してZIPで保存';
                 compressBtn.disabled = false;
             }, 3000);
         });
 
-        // 画像圧縮処理
         async function compressImage(file, targetKB) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -347,7 +373,7 @@
                         canvas.height = height;
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        let quality = 0.9; 
+                        let quality = 0.9;
                         const attemptCompression = () => {
                             canvas.toBlob((blob) => {
                                 const currentKB = blob.size / 1024;
@@ -357,7 +383,7 @@
                                     quality -= 0.1;
                                     attemptCompression();
                                 }
-                            }, 'image/jpeg', quality); 
+                            }, 'image/jpeg', quality);
                         };
                         attemptCompression();
                     };
@@ -368,7 +394,6 @@
             });
         }
 
-        // ダウンロード処理
         function downloadBlob(blob, filename) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
